@@ -1,7 +1,7 @@
-# simple-db-ejhunter-master
+# SimpleDB
 SimpleDB is an implementation of a relational DBMS supporting a subset of SQL syntax and various database operators such as joins (with hash join for optimized equality joins), predicate-based filters, aggregates (AVG, MIN, COUNT, etc.), insertions and deletions. Written as part of a course on database internals.
 
-Features:
+## Features:
 - ACID properties upheld via pessimistic concurrency controls and deadlocks resolved with randomized timeouts on transactions. (A simple solution that surprisingly to me is actually used in production systems. Apparently there are problems with the scalability of the wait-for graph)
 - Locking is transaction-based, rather than thread or process-based so a single transaction has the capability to run on multiple threads. Two-phase-locking (2PL) is used in gathering a transaction's locks. Locks apply to pages (as opposed to tuples) and both exlusive and shared locking is implemented.
 - Transaction performance is optimized with a STEAL (allow writing of dirty pages to disk) NO-FORCE (don't _require_ committed transaction be flushed to disk) buffer management policy.
