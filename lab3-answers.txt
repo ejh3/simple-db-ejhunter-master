@@ -1,0 +1,57 @@
+In this lab we made our DBMS more capable of handling queries from multiple sources. To do this
+we implemented transactions, and the locking that is necessary for them to work well together.
+Whereas before the database could handle queries, though only from one user, now it can receive
+multiple queries and run them in a serializable schedule. This is done through strict two-phase
+locking. The gradual acquiring of locks is done by acquiring locks in the getPage() method in
+BufferPool. Every access of a page is done through this method, so in order to lock on pages, as
+I chose to do, it's easiest and most maintainable to acquire the lock at this bottleneck. The
+other component of strict 2PL is releasing all the locks once the transaction completes. This is
+also done through methods in the BufferPool, specifically transactionComplete(). Unlike the
+acquiring of locks, which is done by sort of automatically as the query is running, the release
+of locks is done by a higher level operator. This makes sense individual operators don't know if
+they're the top and so cannot know when the transaction is complete. This is managed to some
+extent by the Transaction class, which has methods to call transactionComplete() from BufferPool
+and produces the transaction ID which will be passed around to all operators making up the query
+plan. Still, something higher level has to decide when the Transaction will end.
+
+
+Additionally, there is the issue of aborting transactions, which is done with the exception
+TransactionAbortedException. This exception travels all the way up through the call stack until
+it hits something that catches it. Whatever catches it can then abort the transaction.
+
+
+My implementation of page level locking relies mostly on a class I wrote called PageLock.
+PageLock represents a shared or exclusive reentrant lock on a single page with the ability to
+upgrade from a shared to exclusive lock if the holding transaction asks for the lock exclusively
+and the ability to switch to shared or exclusive appropriately if it's not held at all. Of
+course, it locks on the transaction level, rather than the thread level so a second thread acting
+on behalf of the same transaction the lock is locked on will not block when trying to acquire the
+lock. These locks keep track of which transactions hold them. There is a map from PageId to
+PageLock in BufferPool to associate the lock with a specific page and the transactions keep track
+of the pages they hold through another map. This way any transaction can quickly find its
+associated lock and vice versa. Being able to find the locks and pages a transaction used is very
+useful for ending the transaction, when all locks have to be released and all pages have to be
+flushed (or discarded if aborting). Since PageLock really is only associated with a page through
+the map, rather than any part of its own implementation, it might be better to call it a
+transaction lock. It could be used to lock on Tuples without too many changes.
+
+
+To prevent deadlocks I have a simple timeout mechanism built into each PageLock. It waits a
+random number of milliseconds before releasing the lock. I didn't have it random at first and
+often the release of one lock wasn't quick enough for another transaction to see so both
+transactions that were waiting on each other would be aborted. It uses the wait() and notifyAll()
+methods so that it doesn't wait resources checking a condition that wouldn't have changed over
+and over. I use a 100 ms timeout with the wait() so that it can poll the time and see if it needs
+to abort the transaction. I feel the timeout method is unreliable. Maybe if there were many large
+transactions performance would take a big hit because the wait time was too low and the
+transactions abort even if there isn't a deadlock. Perhaps timeouts can be tuned according to the
+size of the transactions, but I think a wait-for graph would be much more reliable. I think it
+was okay to implement the lock book-keeping into the BufferPool because the implementation is
+mostly limited to PageLock, though implementing something like a wait-for graph in the future
+would probably make BufferPool overly cluttered.
+
+
+One possible unit test could be checking for a kind of memory leak where a reference to an unused
+lock is kept behind. This could slow down the database after running for a long time and some
+people might forget to delete the lock as well as release it. I didn't make any changes to the
+API this time.

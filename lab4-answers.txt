@@ -1,0 +1,60 @@
+The main design decision I made was choosing not to use CLRs. I just
+didn't really see how they would be helpful. In ARIES, a CLR can be helpful
+because you're using some kind of priority queue in your undo
+which facilitates jumping to the next relevant log. Here we don't have
+prevLSN field with our log entries, so jumping around in this way isn't
+really an option. If you wrote CLRs only for recovery then you could
+use them as a kind of bookmark of undo progress. That way when you saw
+a CLR you know everything prior to where it points to had been undone.
+If you wrote them for aborts too then I don't think that would be the
+case. But to me this isn't a big benefit as I think undo is already faster
+than redo: the structure of our log records allow skipping over
+the data part when traversing through them backwards but not forwards
+due to the pointer to the start of the record which each record ends
+with. Considering that seeking should be faster than reading and that
+traversing backwards through an update log could require reading ~8000
+bytes less than traversing through it forwards with the default page
+size, it didn't seem very pressing to speed up undo. If anything, it
+might be more helpful to make some kind of log record that tracks redo
+progress instead. Overall, it was just simpler to leave them out so
+that's what I did.
+
+Outside of the necessary changes to BufferPool, I only changed
+HeapPage. There was a bug in it where the leading zeroes of the byte
+array were cut off because I was assigning the results of
+BitSet.toByteArray() to header directly. This broke anything that used
+getPageData(). It's very surprising to me that this bug lasted so long!
+It's been there since lab2. Certainly a unit test which checks for
+something like this could be a good addition.
+
+Another thing I did (in BufferPool.transactionComplete) was make it so
+that unused locks are pruned, as I mentioned I didn't have time for in lab3.
+
+My recovery is pretty straightforward. Here is the pseudocode:
+
+ANALYSIS
+read beginning of file to find checkpoint location
+if there was actually a checkpoint
+    Jump to checkpoint
+    read it
+    update incompleteTxn with this info
+    redoStart = min(checkpoint txn's first log records)
+if no checkpoint
+    redoStart = beginning of first log record
+iterate forwards through records until eof
+    add transaction to incompleteTxns for BEGIN records
+    remove transaction from incompleteTxns for ABORT/COMMIT records
+    add transaction to committedTxns for COMMIT records
+
+REDO
+go to redoStart
+iterate forwards through records until eof
+redo update if it's from a committed txn
+
+UNDO
+rollback with set of all incomplete txns
+
+One part of my recovery I did which I think was interesting is my undo
+implementation. I used a rollback method that took a set of transaction
+IDs which is also used for rolling back in aborts. This allowed reuse
+of the code in a way that still only required one pass through the file.

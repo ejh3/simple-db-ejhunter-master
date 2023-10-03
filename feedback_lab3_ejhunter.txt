@@ -1,0 +1,14 @@
+Feedback for: ejhunter
+--------------------------------------------------------------
+Total Score (%): 98.5
+Unit Test Score (out of 15): 15
+System Test Score (out of 6): 6
+Code Score (out of 10): 9
+Writeup Score (out of 10): 9.5
+--------------------------------------------------------------
+Code feedback:
+(-1) Great work with implementing the locking, but it would be useful to have more comments to explain complicated code blocks (for example, how the wait/notifyAll are expected to interact in your PageLock)
+
+Writeup feedback:
+Nice job explaining the lab and your design choices in detail!
+(-0.5) We expected you to mention how you handled "NO STEAL"/"FORCE" in your implementation

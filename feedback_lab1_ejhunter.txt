@@ -1,0 +1,13 @@
+Feedback for: ejhunter
+--------------------------------------------------------------
+Total Score (%): 96
+Unit Test Score (out of 32): 32
+System Test Score (out of 4): 2
+Code Score (out of 10): 10
+Writeup Score (out of 10): 10
+--------------------------------------------------------------
+Code style: -0
+Nice design decisions to add the iterator to HeapFile and TableData to organize Catalog. One small thing is that you mentioned in your writeup mistakenly getting the file offset by multiplying by td.getSize() rather than BufferPool.getPageSize(), but it appears that you are doing the incorrect thing in HeapFile::readPage because getPageSize is commented out, and getSize is not commented out.
+
+Writeup: -0
+Nice comprehensive writeup with clear descriptions of the components and rationale behind your design desisions! About your comment about deciding to exit when an IOException occurs: this does seem reasonable, though database systems tend to avoid exiting unexpectedly as much as possible. In this case, the database may be able to recover the table by restoring from a backup or log, or even if not, tables for other users may not be affected, so the system shouldn't go down for them too.

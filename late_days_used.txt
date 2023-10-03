@@ -1,0 +1,7 @@
+ lab3       1
+ lab2       1
+ lab3-part1 0
+ lab2-part1 0
+ lab1       0
+ lab1-part1 0
+ HW         2

@@ -1,0 +1,13 @@
+Feedback for: ejhunter
+--------------------------------------------------------------
+Total Score (%): 100
+Unit Test Score (out of 0): 0
+System Test Score (out of 10): 10
+Code Score (out of 10): 10
+Writeup Score (out of 10): 10
+--------------------------------------------------------------
+Code feedback:
+Great job! Your `rollback` implementation is neat.
+
+Writeup feedback:
+Great job explaining the lab and your design choices in detail! I appreciated the pseudocode you included for `recovery`. Happy spring break!

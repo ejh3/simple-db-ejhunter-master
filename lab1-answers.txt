@@ -1,0 +1,53 @@
+In lab 1 I implemented the parts that would lie at the bottom layer of a query
+plan: the HeapFile access method and the SeqScan operator that calls it. Although
+SeqScan doesn’t actually have to use HeapFile to access data, since it relies only
+on the DbFile interface that HeapFile implements. One thing completing this lab
+clarified for me is that constructing the parts of a query plan is different from
+opening them. In class, it was mentioned that open() could set some initial parameters,
+but that hasn’t been the case thus far. SeqScan is constructed with ID of the table
+it will call and HeapFile is constructed with the File it reads. Both of them have
+open() methods that take no arguments. Another subtle thing I noticed is that Pages
+in memory will take up a fair bit more space than pages on disk, since Page objects
+store more information than just the byte[] that is used to construct them. In class
+I was also wondering how the BufferPool would know what access method to use after
+it’s called to get a page, but it doesn’t have that page in memory. Now I understand
+that PageIds keep track of which table they’re a member of, and so the required table
+can be looked up in the Catalog which is globally accessible. HeapPage also gets its
+TupleDesc this way, through the HeapPageId used to construct it. One thing that’s not
+clear to me yet is why PageId is an interface rather than a class. It seems like keeping
+track of a table’s ID and a page number wouldn’t be any different between access methods.
+HeapPageId exclusively has inherited methods and never interacts directly with a HeapPage,
+only storing information about it.
+
+SeqScan gets the DbFile it reads from the Catalog during construction. It uses a
+DbFileIterator to provide its own OpIterator functionality. The DbFileIterator,
+in this case, will come from a HeapFile. Which itself was constructed with information
+about what file to read and the file’s schema. It relies on an Iterator<Tuple> that
+comes from HeapPage, but it also iterates through pages, creating new Iterators for
+each one until it finds a page that has a tuple or runs out of pages. It uses getPage,
+which asks the BufferPool for a page but if there isn’t a page in memory, BufferPool
+calls the readPage() method of the HeapFile in order load the page into memory from disk.
+HeapPage’s iterator continually checks header slots for a tuple until it finds one.
+
+I decided to exit the program when readPage throws an IOException. I just didn’t think
+there was really any way to handle that. I don’t think it’s a recoverable condition
+really. When there’s a problem with the read in C you can know exactly what went wrong
+to decide whether to keep reading or not, but I think readFully handles all that here.
+There were lots of methods that specified that they could throw a DbException, but I
+never found any reason to throw one. Oh also I used anonymous classes for my HeapFile
+and HeapPage iterators, since the class exists for no other purpose and it needed no
+where else. If that changes, it is easy to make them nested classes or static inner
+classes since nothing relies on them being anonymous classes.
+
+A bug where I accidentally went to file offset pid.getPageNumber() *td.getSize() instead
+of pid.getPageNumber() * BufferPool.getPageSize() in readPage slipped by HeapFileReadTest
+(but was caught by ScanTest) because it never reads onto a second page. So it might be
+good to read multiple pages in HeapFileReadTest. Also, from what I can tell, all data
+that tests use is, at bottom, created by HeapFileEncoder.convert, which only produces
+contiguous chunks of data. So it would be good to have tests on pages which have a tuple
+deleted somewhere. This would catch bugs in HeapPage.iterator() that I don’t think are
+caught now. Similarly, a test with a full empty page would be good for HeapFile.iterator().
+
+There are no missing or incomplete elements regarding what was required for lab 1. Well,
+I suppose I could’ve made a simple page eviction policy but I didn’t.
+
